@@ -1,6 +1,7 @@
 package com.jiage.punchcard.service;
 
 import android.annotation.SuppressLint;
+import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -14,6 +15,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.Vibrator;
 import android.util.Log;
 
@@ -90,6 +92,7 @@ public class TimeService extends Service {
         //现在
         String newhh = SDDateUtil.getNow_HH();
         String newmm = SDDateUtil.getNow_mm();
+
         SharedPreferenceConfig sp = SharedPreference.getSharedPreference(this);
         String top = sp.getTOP();
         String bot = sp.getBOT();
@@ -110,16 +113,11 @@ public class TimeService extends Service {
         }else{
             text += "明日"+tophh+"时"+topmm+"分";
         }
-        if(Integer.parseInt(newhh) == Integer.parseInt(tophh)&&Integer.parseInt(newmm) == Integer.parseInt(topmm)){
-            PackageManager packageManager = this.getPackageManager();
-            Intent intent= packageManager.getLaunchIntentForPackage("com.tencent.wework");
-            startActivity(intent);
-        }
-        if(Integer.parseInt(newhh) == Integer.parseInt(bothh)&&Integer.parseInt(newmm) == Integer.parseInt(botmm)){
-            PackageManager packageManager = this.getPackageManager();
-            Intent intent= packageManager.getLaunchIntentForPackage("com.tencent.wework");
-            startActivity(intent);
-        }
+
+        wakeUpAndUnlock(this);
+
+        startActivity(newhh,newmm,tophh,topmm);
+        startActivity(newhh,newmm,bothh,botmm);
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         Notification.Builder notification = getNotificationBuilder(this, notificationManager, "主服务", text, CHANNEL_ID);
@@ -158,5 +156,40 @@ public class TimeService extends Service {
                 .setContentTitle(title)
                 .setContentText(content)
                 .setSmallIcon(R.mipmap.ic_launcher);
+    }
+
+    /**
+     * 點亮屏幕
+     * @param context
+     */
+    private void wakeUpAndUnlock(Context context){
+        //屏锁管理器
+        KeyguardManager km= (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+        KeyguardManager.KeyguardLock kl = km.newKeyguardLock("unLock");
+        //解锁
+        kl.disableKeyguard();
+        //获取电源管理器对象
+        PowerManager pm=(PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        //获取PowerManager.WakeLock对象,后面的参数|表示同时传入两个值,最后的是LogCat里用的Tag
+        @SuppressLint("InvalidWakeLockTag") PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.SCREEN_DIM_WAKE_LOCK,"bright");
+        //点亮屏幕
+        wl.acquire();
+        //释放
+        wl.release();
+    }
+
+    /**
+     * 打開企業微信
+     * @param newhh
+     * @param newmm
+     * @param hh
+     * @param mm
+     */
+    private void startActivity(String newhh,String newmm,String hh,String mm){
+        if(Integer.parseInt(newhh) == Integer.parseInt(hh)&&Integer.parseInt(newmm) == Integer.parseInt(mm)){
+            PackageManager packageManager = this.getPackageManager();
+            Intent intent= packageManager.getLaunchIntentForPackage("com.tencent.wework");
+            startActivity(intent);
+        }
     }
 }
